@@ -140,7 +140,18 @@ class LineFollowerEnv(GazeboEnv):
         '''
         vel_cmd = RosTwist()
 
-        # TODO: Impelement process action.
+        #set forward velocity
+        vel_cmd.linear.x = 0.6
+
+        #set angular velocity based on action
+        if action == 0:
+            vel_cmd.angular.z = 1.2  # Turn left
+
+        elif action == 1:
+            vel_cmd.angular.z = 0.0   # Drive straight
+
+        elif action == 2:
+            vel_cmd.angular.z = -1.2  # Turn right
         
         return vel_cmd
 
@@ -153,7 +164,17 @@ class LineFollowerEnv(GazeboEnv):
         '''
         reward = 0
 
-        # TODO: Implement process reward.
+        # Penalize robot for losing the line
+        if terminated:
+            reward = -30
+
+        # Reward robot for driving forward
+        elif action == 1:
+            reward = 20
+
+        # Reward robot for turning left or right
+        elif action == 0 or action == 2:
+            reward = 10
         
         return reward
 
@@ -174,8 +195,35 @@ class LineFollowerEnv(GazeboEnv):
         state = 0
         terminated = False
 
-        # TODO: Implement process observation
+        #convert image to grayscale
+        gray = cv2.cvtColor(cv_image, cv2.COLOR_BGR2GRAY)
 
+        #convert image to black and white
+        _, binary = cv2.threshold(gray, 100, 255, cv2.THRESH_BINARY_INV)
+
+        #get image dimensions
+        height, width = binary.shape
+
+        #split image into sections - each section represents a separate state
+        left = binary[:, :width//3]
+        center = binary[:, width//3:2*width//3]
+        right = binary[:, 2*width//3:]
+
+        #count white pixels in each section (detected dark pixels)
+        line_counts = [
+            np.count_nonzero(left),
+            np.count_nonzero(center),
+            np.count_nonzero(right)
+        ]
+
+        #determine state: where is the line relaive to the front of the camera
+        if max(line_counts) == 0:
+            state = -1
+            terminated = True
+        else:
+            state = int(np.argmax(line_counts))
+        print(f"Line counts: {line_counts}")
+        print(f"State: {state}, Terminated: {terminated}")
         return state, terminated
 
 
