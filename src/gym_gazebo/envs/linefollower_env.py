@@ -166,17 +166,27 @@ class LineFollowerEnv(GazeboEnv):
 
         # Penalize robot for losing the line
         if terminated:
-            reward = -30
+            reward = -100
 
-        # Reward robot for driving forward
-        elif action == 1:
-            reward = 20
+        elif state == 1:
+            if(action == 1):
+                reward = 5
+            else:
+                reward = 2
 
-        # Reward robot for turning left or right
-        elif action == 0 or action == 2:
-            reward = 10
+        elif state == 0:
+            if(action == 1):
+                reward = 4
+            else:
+                 reward = 1     
+        elif state == 2:
+            if(action == 2):
+                reward = 4
+            else:
+                reward = 1 
         
         return reward
+        
 
 
     def process_obs(self, obs: RosImage):
@@ -203,6 +213,7 @@ class LineFollowerEnv(GazeboEnv):
 
         #get image dimensions
         height, width = binary.shape
+        binary = binary[3*height//4:, :]
 
         #split image into sections - each section represents a separate state
         left = binary[:, :width//3]
@@ -217,7 +228,7 @@ class LineFollowerEnv(GazeboEnv):
         ]
 
         #determine state: where is the line relaive to the front of the camera
-        if max(line_counts) == 0:
+        if sum(line_counts) < 100:
             state = -1
             terminated = True
         else:
